@@ -1,23 +1,32 @@
 import argparse
 import asyncio
 from config import Config
-from logger import Logger
-from chat import Chat
-from graph_builder import GraphBuilder
 from input_manager import InputManager
+from model_manager import ModelManager
+from graph_manager import GraphManager
+from graph_database_manager import GraphDatabaseManager
+from log_manager import log
 
-# TODO refactor to manager names...
-# TODO pick and XML format and implement pretty printing for logs
-# TODO dig up and implement suggestions for prompt refinement (specify nodes in detail)
-# TODO prompt Version: 1.0 -> try "3 part facts"
+
 async def main(args):
+    # initialize modules
     config = Config()
-    logger = Logger()
-    chat = Chat(config.hf_token)
+    model_manager = ModelManager(config.hf_token)
     input_manager = InputManager()
-    graph_builder = GraphBuilder(chat.chat, logger, args.central_topic, args.breadth, chunk_size=1500)
-    responses = await graph_builder.build_initial(input_manager.input)
-    logger.log(f"Responses {responses}", console=True)
+    graph_manager = GraphManager(
+        model_manager.chat, args.central_topic, args.breadth, chunk_size=1500
+    )
+    db_manager = GraphDatabaseManager(uri=config.neo4j_uri, user=config.neo4j_user, password=config.neo4j_password)
+    # start with a clean database
+    await db_manager.reset()
+    # build the initial graph
+    graph = await graph_manager.build_initial(input_manager.input)
+    log(graph, console=True)
+    # add key entity embeddings and import to neo4j
+    await graph_manager.add_entity_embeddings(graph, db_manager.get_node_by_id, model_manager.embeddings.aembed_query)
+    await db_manager.import_graph(graph)
+    # cleanup
+    await db_manager.close()
 
 
 if __name__ == "__main__":
