@@ -1,7 +1,7 @@
-import asyncio
-from neo4j import AsyncGraphDatabase
-from graph import Graph, DocumentNode, ChunkNode, KeyElementNode
+from neo4j import AsyncGraphDatabase, GraphDatabase
+from graph import Graph
 from log_manager import log_error
+from typing import List, Dict
 
 
 def chunked(iterable, batch_size):
@@ -12,6 +12,7 @@ def chunked(iterable, batch_size):
 class GraphDatabaseManager:
     def __init__(self, uri: str, user: str, password: str):
         self.driver = AsyncGraphDatabase.driver(uri, auth=(user, password))
+        self.sdriver = GraphDatabase.driver(uri, auth=(user, password))
 
     async def close(self):
         await self.driver.close()
@@ -103,3 +104,93 @@ class GraphDatabaseManager:
             )
             record = await result.single()
             return record["n"] if record else None
+
+    def get_atomic_facts(self, key_elements: List[str]) -> List[Dict[str, str]]:
+        with self.sdriver.session() as session:
+            result = session.run(
+                """
+                MATCH (k:KeyElement)<-[:HAS_KEY_ELEMENT]-(fact)<-[:HAS_ATOMIC_FACT]-(chunk)
+                WHERE k.id IN $key_elements
+                RETURN DISTINCT chunk.id AS chunk_id, fact.text AS text
+                """,
+                {"key_elements": key_elements},
+            )
+            return [
+                {"chunk_id": record["chunk_id"], "text": record["text"]}
+                for record in result
+            ]
+
+    def get_neighbors_by_key_element(self, key_elements) -> List[str]:
+        with self.sdriver.session() as session:
+            result = session.run(
+                """
+                MATCH (k:KeyElement)<-[:HAS_KEY_ELEMENT]-()-[:HAS_KEY_ELEMENT]->(neighbor)
+                WHERE k.id IN $key_elements AND NOT neighbor.id IN $key_elements
+                WITH neighbor, count(*) AS count
+                ORDER BY count DESC LIMIT 50
+                RETURN COLLECT(neighbor.id) AS possible_candidates
+                """,
+                {"key_elements": key_elements},
+            )
+            record = result.single()
+            return record["possible_candidates"] if record else []
+
+    def get_subsequent_chunk_id(self, chunk_id: str) -> str:
+        with self.sdriver.session() as session:
+            result = session.run(
+                """
+                MATCH (c:Chunk)-[:NEXT]->(next)
+                WHERE c.id = $chunk_id
+                RETURN next.id AS next
+                """,
+                {"chunk_id": chunk_id},
+            )
+            record = result.single()
+            return record["next"] if record else None
+
+    def get_previous_chunk_id(self, chunk_id: str) -> str:
+        with self.sdriver.session() as session:
+            result = session.run(
+                """
+                MATCH (c:Chunk)<-[:NEXT]-(previous)
+                WHERE c.id = $chunk_id
+                RETURN previous.id AS previous
+                """,
+                {"chunk_id": chunk_id},
+            )
+            record = result.single()
+            return record["previous"] if record else None
+
+    def get_chunk(self, chunk_id: str) -> Dict[str, str]:
+        with self.sdriver.session() as session:
+            result = session.run(
+                """
+                MATCH (c:Chunk)
+                WHERE c.id = $chunk_id
+                RETURN c.id AS chunk_id, c.text AS text
+                """,
+                {"chunk_id": chunk_id},
+            )
+            record = result.single()
+            return (
+                {"chunk_id": record["chunk_id"], "text": record["text"]}
+                if record
+                else None
+            )
+
+    def get_similar_nodes(self, target_embeddings: list, k: int = 50):
+        with self.sdriver.session() as session:
+            result = session.run(
+                """
+                WITH $targetEmbeddings AS target_embeddings
+                MATCH (n:key_element)
+                WHERE n.embeddings IS NOT NULL
+                WITH n, gds.similarity.cosine(n.embeddings, target_embeddings) AS similarity
+                ORDER BY similarity DESC
+                LIMIT $k
+                RETURN n.id AS id, similarity
+                """,
+                {"targetEmbeddings": target_embeddings, "k": k},
+            )
+            return [{"id": record["id"], "similarity": record["similarity"]} for record in result]
+
