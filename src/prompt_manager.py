@@ -318,3 +318,4 @@ class Prompt:
         self.prompt = prompt
 
 ExtractionPrompt = Prompt("1.1", EXTRACTION_PROMPT)
+# TODO: add versioning for all GraphReader agent prompts

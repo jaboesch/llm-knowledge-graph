@@ -27,16 +27,15 @@ async def extract_facts_from_chunk(chat, chunk):
 
 
 class GraphManager:
-    def __init__(self, chat, central_topic, breadth, chunk_size=2000):
+    def __init__(self, chat, central_topic, chunk_size=2000):
         self.chat = chat
         self.central_topic = central_topic
-        self.breadth = breadth
         self.chunk_size = chunk_size
 
-    async def build_initial(self, document_content):
+    async def build_graph(self, document_content):
         chunk_overlap = self.chunk_size // 10
         log(
-            f"Initializing graph build with params: central_topic={self.central_topic}, breadth={self.breadth}, chunk_size={self.chunk_size}, chunk_overlap={chunk_overlap}, extraction_prompt_version={ExtractionPrompt.version}"
+            f"Initializing graph build with params: central_topic={self.central_topic}, chunk_size={self.chunk_size}, chunk_overlap={chunk_overlap}, extraction_prompt_version={ExtractionPrompt.version}"
         )
 
         # Initialize the graph and document node
