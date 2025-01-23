@@ -6,6 +6,9 @@ from graph_reader_agent.answer_reasoning import AnswerReasoning
 from graph_reader_agent.initial_node_selection import InitialNodeSelection
 from graph_reader_agent.state import OverallState, InputState, OutputState
 from langgraph.graph import StateGraph, START, END
+from log_manager import log
+from pprint import pformat
+
 
 class GraphReaderAgent:
     def __init__(self, db_context, model_context):
@@ -44,7 +47,15 @@ class GraphReaderAgent:
         self.langgraph = self.langgraph.compile()
 
     def invoke(self, question):
-        return self.langgraph.invoke({"question": question})
+        inputs = {"question": question}
+        for output in self.langgraph.stream(inputs, stream_mode="debug"):
+            log(f"Type: {output['type']} --- Step: {output['step']} {"-" * 150}", console=True)
+            if output['type'] == "task":
+                log(pformat(output['payload']['input'], width=200), console=True)
+            elif output['type'] == "task_result":
+                log(pformat(output['payload']['result'], width=200), console=True)
+        log(f"{'*' * 150}", console=True)
+        return output['payload']['result']
 
     @staticmethod
     def atomic_fact_condition(state):

@@ -7,6 +7,7 @@ from prompt_manager import (
     INITIAL_NODE_ARG_KEY_ELEMENT,
     INITIAL_NODE_ARG_SCORE,
 )
+from log_manager import log
 
 
 class Node(BaseModel):
@@ -43,17 +44,21 @@ Nodes: {nodes}"""
                 ),
             ]
         )
-        initial_nodes_chain = initial_node_prompt | self.chat_model.with_structured_output(InitialNodes)
+
+        initial_nodes_chain = (
+            initial_node_prompt | self.chat_model.with_structured_output(InitialNodes)
+        )
         # get embeddings of the question and plan
         embeddings = self.embeddings_model.embed_query(state.get("question"))
         potential_nodes = self.db_context.get_similar_nodes(embeddings)
-        initial_nodes = initial_nodes_chain.invoke(
-            {
-                "question": state.get("question"),
-                "rational_plan": state.get("rational_plan"),
-                "nodes": potential_nodes,
-            }
-        )
+        
+        inputs = {
+            "question": state.get("question"),
+            "rational_plan": state.get("rational_plan"),
+            "nodes": potential_nodes,
+        }
+        
+        initial_nodes = initial_nodes_chain.invoke(inputs)
         # paper uses 5 initial nodes
         check_atomic_facts_queue = [
             el.key_element

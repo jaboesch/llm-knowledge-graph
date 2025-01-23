@@ -104,14 +104,22 @@ class GraphDatabaseManager:
             )
             record = await result.single()
             return record["n"] if record else None
+        
+    def s_get_node_by_id(self, node_id: str):
+        with self.sdriver.session() as session:
+            result = session.run(
+                "MATCH (n) WHERE n.id = $id RETURN n", id=node_id
+            )
+            record = result.single()
+            return record["n"] if record else None
 
     def get_atomic_facts(self, key_elements: List[str]) -> List[Dict[str, str]]:
         with self.sdriver.session() as session:
             result = session.run(
                 """
-                MATCH (k:KeyElement)<-[:HAS_KEY_ELEMENT]-(fact)<-[:HAS_ATOMIC_FACT]-(chunk)
+                MATCH (k:key_element)<-[:HAS_KEY_ELEMENT]-(fact:atomic_fact)<-[:HAS_ATOMIC_FACT]-(chunk)
                 WHERE k.id IN $key_elements
-                RETURN DISTINCT chunk.id AS chunk_id, fact.text AS text
+                RETURN DISTINCT chunk.id AS chunk_id, fact.content AS text
                 """,
                 {"key_elements": key_elements},
             )
@@ -124,7 +132,7 @@ class GraphDatabaseManager:
         with self.sdriver.session() as session:
             result = session.run(
                 """
-                MATCH (k:KeyElement)<-[:HAS_KEY_ELEMENT]-()-[:HAS_KEY_ELEMENT]->(neighbor)
+                MATCH (k:key_element)<-[:HAS_KEY_ELEMENT]-()-[:HAS_KEY_ELEMENT]->(neighbor)
                 WHERE k.id IN $key_elements AND NOT neighbor.id IN $key_elements
                 WITH neighbor, count(*) AS count
                 ORDER BY count DESC LIMIT 50
@@ -139,7 +147,7 @@ class GraphDatabaseManager:
         with self.sdriver.session() as session:
             result = session.run(
                 """
-                MATCH (c:Chunk)-[:NEXT]->(next)
+                MATCH (c:chunk)-[:NEXT]->(next)
                 WHERE c.id = $chunk_id
                 RETURN next.id AS next
                 """,
@@ -152,7 +160,7 @@ class GraphDatabaseManager:
         with self.sdriver.session() as session:
             result = session.run(
                 """
-                MATCH (c:Chunk)<-[:NEXT]-(previous)
+                MATCH (c:chunk)<-[:NEXT]-(previous)
                 WHERE c.id = $chunk_id
                 RETURN previous.id AS previous
                 """,
@@ -165,9 +173,9 @@ class GraphDatabaseManager:
         with self.sdriver.session() as session:
             result = session.run(
                 """
-                MATCH (c:Chunk)
+                MATCH (c:chunk)
                 WHERE c.id = $chunk_id
-                RETURN c.id AS chunk_id, c.text AS text
+                RETURN c.id AS chunk_id, c.content AS text
                 """,
                 {"chunk_id": chunk_id},
             )

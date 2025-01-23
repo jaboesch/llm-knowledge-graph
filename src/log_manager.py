@@ -18,6 +18,13 @@ def log(message, console=False):
     logger.info(message)
 
 
+def log_prompt(prompt, inputs=None, console=False):
+    if inputs:
+        log(f"Prompt: {prompt.format(**inputs)}", console)
+    else:
+        log(f"Prompt: {prompt}", console)
+
+
 def log_chat(chat_history, console=False):
     logger.info("CHAT COMPLETION:")
     for message in chat_history:

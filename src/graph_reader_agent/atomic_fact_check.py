@@ -28,6 +28,7 @@ Atomic facts: {atomic_facts}"""),
         ])
         chain = prompt | self.chat_model.with_structured_output(AtomicFactOutput)
 
+        log(f"Check Atomic Facts Queue: {state.get('check_atomic_facts_queue')}")
         atomic_facts = self.db_context.get_atomic_facts(state.get("check_atomic_facts_queue"))
         result = chain.invoke({
             "question": state.get("question"),

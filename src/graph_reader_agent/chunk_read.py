@@ -31,7 +31,7 @@ Chunk: {chunk}"""),
 
         check_chunks_queue = state.get("check_chunks_queue")
         chunk_id = check_chunks_queue.pop()
-        chunk_text = self.db_context.get_node_by_id(chunk_id)
+        chunk_text = self.db_context.s_get_node_by_id(chunk_id)
         result = chain.invoke({
             "question": state.get("question"),
             "rational_plan": state.get("rational_plan"),
