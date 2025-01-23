@@ -10,9 +10,9 @@ def chunked(iterable, batch_size):
 
 
 class GraphDatabaseManager:
-    def __init__(self, uri: str, user: str, password: str):
-        self.driver = AsyncGraphDatabase.driver(uri, auth=(user, password))
-        self.sdriver = GraphDatabase.driver(uri, auth=(user, password))
+    def __init__(self, uri: str, user: str, password: str, database: str):
+        self.driver = AsyncGraphDatabase.driver(uri, auth=(user, password), database=database)
+        self.sdriver = GraphDatabase.driver(uri, auth=(user, password), database=database)
 
     async def close(self):
         await self.driver.close()
