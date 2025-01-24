@@ -68,7 +68,7 @@ The Graph Builder component processes long-form text such as Wikipedia articles,
 ![Large Graph Section](https://www.jboesch.com/assets/knowledge-graph/hp-full-graph.jpg)
 *A large selection of key entities and relationships created from the [Harry Potter Wikipedia article](https://en.wikipedia.org/wiki/Harry_Potter).*
 
-![Graph Hierarchy Example](https://www.jboesch.com/assets/knowledge-graph/hp-graph-segment-3.jpg)
+![Graph Hierarchy Example](https://www.jboesch.com/assets/knowledge-graph/hp-graph-segment-3.png)
 *A small selection showing the graph hierarchy with selected facts from *Harry Potter and the Prisoner of Azkaban*.*
 
 ---
